@@ -118,6 +118,8 @@ export class JianpuBlock {
    augmentationDash?: boolean;
    /** Tuplet bracket info derived from notes' tuplet field */
    tupletInfo?: { type: 'start' | 'stop' | 'middle', actual: number };
+   /** True if this block is a grace note (rendered small, does not consume beat time) */
+   isGrace?: boolean;
 
 
   // --- Rhythmic Properties (calculated during processing) ---
@@ -388,6 +390,9 @@ export class JianpuBlock {
         delete this.augmentationDots;
         delete this.augmentationDash;
         delete this.tupletInfo;
+
+        // Grace blocks have no duration rendering
+        if (this.isGrace) return;
     
         const blockLength = this.length;
         if (isSafeZero(blockLength) || blockLength < 0) return;

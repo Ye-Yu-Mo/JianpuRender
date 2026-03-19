@@ -368,6 +368,8 @@ export class JianpuSVGRender {
 
         const linkedNoteMap: LinkedNoteMap = new Map(); // For ties across blocks
         const tupletBracketMap: TupletBracketMap = new Map(); // For tuplet brackets across blocks
+        // Pending grace blocks: drawn just before their following main block
+        const pendingGraceBlocks: JianpuBlock[] = [];
 
         this.jianpuModel.jianpuBlockMap.forEach((block, startTimeQ) => {
             // Check if block start time is >= last rendered quarter note time
@@ -380,6 +382,22 @@ export class JianpuSVGRender {
                      // In proportional mode, x is determined by time
                      currentX = this.jianpuModel.measuresInfo.quartersToTime(startTimeQ, startTimeQ) * this.config.pixelsPerTimeStep;
                  }
+
+                // Grace blocks: defer drawing until we know the main block's x
+                if (block.isGrace) {
+                    pendingGraceBlocks.push(block);
+                    return; // skip normal drawing for grace blocks
+                }
+
+                // Draw any pending grace blocks to the left of this main block
+                if (pendingGraceBlocks.length > 0 && isCompact) {
+                    let graceOffsetX = currentX;
+                    for (let i = pendingGraceBlocks.length - 1; i >= 0; i--) {
+                        const graceWidth = this.drawJianpuBlock(pendingGraceBlocks[i], graceOffsetX, linkedNoteMap, tupletBracketMap);
+                        graceOffsetX -= graceWidth;
+                    }
+                    pendingGraceBlocks.length = 0;
+                }
 
                 const blockWidth = this.drawJianpuBlock(block, currentX, linkedNoteMap, tupletBracketMap);
 
@@ -439,6 +457,30 @@ export class JianpuSVGRender {
        const isMeasureStart = block.isMeasureBeginning();
        const blockGroup = createSVGGroupChild(this.musicG, `block-${block.start}`);
        blockGroup.setAttribute('data-block-start', `${block.start}`); // For later lookup
+
+       // Grace blocks: draw small, no bar line, no spacing gap, return width only
+       if (block.isGrace) {
+           const graceFontSize = `${this.config.noteHeight * SMALL_FONT_SIZE_MULTIPLIER * 0.8}px`;
+           let graceX = x;
+           block.notes.forEach(note => {
+               const numText = `${note.jianpuNumber}`;
+               const num = drawSVGText(blockGroup, numText, graceX, 0, graceFontSize, 'normal', 'start', 'middle', this.config.noteColor);
+               const nw = num.getBBox().width;
+               // Octave dots for grace note
+               if (note.octaveDot !== 0) {
+                   const dotSize = this.config.noteHeight * DOT_SIZE_FACTOR * 0.8;
+                   const dotScale = dotSize / (PATH_SCALE * 0.15);
+                   const dotX = graceX + nw / 2;
+                   const baseOffset = this.config.noteHeight * OCTAVE_DOT_OFFSET_FACTOR * 0.8;
+                   for (let i = 0; i < Math.abs(note.octaveDot); i++) {
+                       const y = (note.octaveDot > 0 ? -baseOffset : baseOffset * 0.6);
+                       drawSVGPath(blockGroup, dotPath, dotX, y, dotScale, dotScale);
+                   }
+               }
+               graceX += nw;
+           });
+           return graceX - x; // width of grace content, no gap added
+       }
 
        // --- 1. Draw Bar Line (if needed) ---
        // Bar lines are drawn *before* the block they precede.

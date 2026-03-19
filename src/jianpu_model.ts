@@ -121,7 +121,20 @@ import {
       this.jianpuInfo.notes.forEach(note => {
           const noteStart = note.start;
           const measureNumber = this.measuresInfo.measureNumberAtQ(noteStart);
-  
+
+          // Grace notes: stored at key (start - 1e-4), length=0, do not advance lastNoteEndTime
+          if (note.isGrace) {
+              const graceKey = noteStart - 1e-4;
+              const keySignatureKey = this.measuresInfo.keySignatureAtQ(noteStart);
+              const jianpuNote = this.createJianpuNote(note, keySignatureKey);
+              const graceBlock = new JianpuBlock(graceKey, 0, [], measureNumber);
+              graceBlock.isGrace = true;
+              graceBlock.addNote(jianpuNote);
+              graceBlock.start = graceKey; // addNote() overwrites start; restore graceKey
+              rawBlocks.set(graceKey, graceBlock);
+              return; // do NOT advance lastNoteEndTime
+          }
+
           if (noteStart > lastNoteEndTime + 1e-6) { // Fill Rests
               const restStart = lastNoteEndTime;
               const restLength = noteStart - restStart;
@@ -129,10 +142,10 @@ import {
               const restBlock = new JianpuBlock(restStart, restLength, [], restMeasureNum);
               rawBlocks.set(restStart, restBlock);
           }
-  
+
           const keySignatureKey = this.measuresInfo.keySignatureAtQ(noteStart);
           const jianpuNote = this.createJianpuNote(note, keySignatureKey);
-  
+
           let block = rawBlocks.get(noteStart);
           if (!block) {
               block = new JianpuBlock(noteStart, 0, [], measureNumber);
@@ -163,12 +176,20 @@ import {
   
       while (blockProcessingQueue.length > 0) {
           let currentBlock = blockProcessingQueue.shift()!;
-  
+
+          // Grace blocks: skip all splitting, put directly into map
+          if (currentBlock.isGrace) {
+              currentBlock.length = 0; // enforce length=0 regardless of addNote side-effects
+              currentBlock.calculateRenderProperties(this.measuresInfo);
+              this.jianpuBlockMap.set(currentBlock.start, currentBlock);
+              continue;
+          }
+
           if (processedBlocksForSplitting.has(currentBlock.start) && this.jianpuBlockMap.has(currentBlock.start)) {
               // Block might have been re-added after a split, potentially merged already.
               // mergeToMap should handle updates if necessary.
           }
-  
+
           let remainingBeatSplit = currentBlock.splitToBeat(this.measuresInfo);
           if (remainingBeatSplit) {
               currentBlock.mergeToMap(this.jianpuBlockMap);
