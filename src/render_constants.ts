@@ -57,3 +57,8 @@ export const DURATION_LINE_SCALES = new Map<number, number>([
 export const TUPLET_BRACKET_Y_FACTOR = 1.8;
 /** Height of the bracket's end ticks (relative to noteHeight) */
 export const TUPLET_BRACKET_TICK_FACTOR = 0.3;
+
+/** Vertical offset for ornament symbols above note number (relative to noteHeight) */
+export const ORNAMENT_Y_FACTOR = 1.6;
+/** Font size multiplier for ornament text (relative to noteHeight) */
+export const ORNAMENT_FONT_SIZE_MULTIPLIER = 0.7;

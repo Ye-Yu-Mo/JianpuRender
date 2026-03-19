@@ -19,7 +19,8 @@ import {
   LINE_STROKE_WIDTH, COMPACT_SPACING_FACTOR, UNDERLINE_SPACING_FACTOR,
   OCTAVE_DOT_OFFSET_FACTOR, DOT_SIZE_FACTOR, AUGMENTATION_DASH_FACTOR,
   FONT_SIZE_MULTIPLIER, SMALL_FONT_SIZE_MULTIPLIER, DURATION_LINE_SCALES,
-  TUPLET_BRACKET_Y_FACTOR, TUPLET_BRACKET_TICK_FACTOR
+  TUPLET_BRACKET_Y_FACTOR, TUPLET_BRACKET_TICK_FACTOR,
+  ORNAMENT_Y_FACTOR, ORNAMENT_FONT_SIZE_MULTIPLIER
 } from './render_constants';
 
 import {
@@ -575,7 +576,6 @@ export class JianpuSVGRender {
             const tickH = this.config.noteHeight * TUPLET_BRACKET_TICK_FACTOR;
             const fontSize = `${this.config.noteHeight * SMALL_FONT_SIZE_MULTIPLIER}px`;
             const blockCenterX = x + contentWidth / 2;
-            const blockRightX = x + contentWidth;
 
             if (type === 'start') {
                 // Record start position; bracket will be drawn when 'stop' is encountered
@@ -700,6 +700,24 @@ private drawNotes(
             }
         }
 
+
+        // --- Ornament ---
+        if (note.ornament && !augmentationDash) {
+            const ornamentY = -(this.config.noteHeight * ORNAMENT_Y_FACTOR);
+            const ornamentFontSize = `${this.config.noteHeight * ORNAMENT_FONT_SIZE_MULTIPLIER}px`;
+            const ornamentX = noteStartX + noteWidth / 2;
+            let ornamentText: string;
+            switch (note.ornament) {
+                case 'trill':   ornamentText = 'tr';  break;
+                case 'mordent': ornamentText = '~';   break;
+                case 'turn':    ornamentText = 'S';   break;
+                default:        ornamentText = '';
+            }
+            if (ornamentText) {
+                drawSVGText(noteG, ornamentText, ornamentX, ornamentY,
+                    ornamentFontSize, 'italic', 'middle', 'auto', this.config.noteColor);
+            }
+        }
 
         // --- Duration Underlines ---
         if (durationLines > 0) {
