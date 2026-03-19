@@ -20,17 +20,19 @@ import {
   OCTAVE_DOT_OFFSET_FACTOR, DOT_SIZE_FACTOR, AUGMENTATION_DASH_FACTOR,
   FONT_SIZE_MULTIPLIER, SMALL_FONT_SIZE_MULTIPLIER, DURATION_LINE_SCALES,
   TUPLET_BRACKET_Y_FACTOR, TUPLET_BRACKET_TICK_FACTOR,
-  ORNAMENT_Y_FACTOR, ORNAMENT_FONT_SIZE_MULTIPLIER
+  ORNAMENT_Y_FACTOR, ORNAMENT_FONT_SIZE_MULTIPLIER,
+  ARTICULATION_BASE_Y_FACTOR, ARTICULATION_STEP_Y_FACTOR
 } from './render_constants';
 
 import {
   SVGNS, drawSVGPath, drawSVGText, createSVGGroupChild, setBlinkAnimation,
-  setStroke, highlightElement, resetElementHighlight
+  setStroke, setFill, highlightElement, resetElementHighlight
 } from './svg_tools';
 
 import  {
   PATH_SCALE, ACCIDENTAL_TEXT, // Using text for accidentals
-  barPath, underlinePath, augmentationDashPath, tiePath, dotPath
+  barPath, underlinePath, augmentationDashPath, tiePath, dotPath,
+  accentPath, tenutoPath
 } from './svg_paths';
 
 import {
@@ -716,6 +718,58 @@ private drawNotes(
             if (ornamentText) {
                 drawSVGText(noteG, ornamentText, ornamentX, ornamentY,
                     ornamentFontSize, 'italic', 'middle', 'auto', this.config.noteColor);
+            }
+        }
+
+        // --- Articulations ---
+        if (note.articulations?.length && !augmentationDash) {
+            const dotSize = this.config.noteHeight * DOT_SIZE_FACTOR;
+            const dotScale = dotSize / (PATH_SCALE * 0.15);
+            const artX = noteStartX + noteWidth / 2;
+            let artY = -(this.config.noteHeight * ARTICULATION_BASE_Y_FACTOR);
+            const step = this.config.noteHeight * ARTICULATION_STEP_Y_FACTOR;
+
+            for (const art of note.articulations) {
+                switch (art) {
+                    case 'staccato':
+                        drawSVGPath(noteG, dotPath, artX, artY, dotScale, dotScale);
+                        artY -= step;
+                        break;
+                    case 'staccatissimo':
+                        drawSVGPath(noteG, dotPath, artX, artY, dotScale * 0.7, dotScale * 0.7);
+                        drawSVGPath(noteG, dotPath, artX, artY - dotSize * 1.5, dotScale * 0.7, dotScale * 0.7);
+                        artY -= step * 1.5;
+                        break;
+                    case 'accent': {
+                        const accentScale = this.config.noteHeight * 0.008;
+                        const accent = drawSVGPath(noteG, accentPath,
+                            artX - this.config.noteHeight * 0.4, artY, accentScale, accentScale);
+                        setStroke(accent, this.config.noteColor, LINE_STROKE_WIDTH);
+                        setFill(accent, 'none');
+                        artY -= step;
+                        break;
+                    }
+                    case 'strong-accent': {
+                        const accentScale = this.config.noteHeight * 0.008;
+                        const a1 = drawSVGPath(noteG, accentPath,
+                            artX - this.config.noteHeight * 0.4, artY, accentScale, accentScale);
+                        setStroke(a1, this.config.noteColor, LINE_STROKE_WIDTH);
+                        setFill(a1, 'none');
+                        const a2 = drawSVGPath(noteG, accentPath,
+                            artX - this.config.noteHeight * 0.4, artY - step * 0.6, accentScale, accentScale);
+                        setStroke(a2, this.config.noteColor, LINE_STROKE_WIDTH);
+                        setFill(a2, 'none');
+                        artY -= step * 1.5;
+                        break;
+                    }
+                    case 'tenuto': {
+                        const tenutoWidthScale = noteWidth / PATH_SCALE;
+                        const tenuto = drawSVGPath(noteG, tenutoPath, noteStartX, artY, tenutoWidthScale, 1);
+                        setStroke(tenuto, this.config.noteColor, LINE_STROKE_WIDTH);
+                        artY -= step;
+                        break;
+                    }
+                }
             }
         }
 

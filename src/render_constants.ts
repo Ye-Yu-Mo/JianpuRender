@@ -62,3 +62,8 @@ export const TUPLET_BRACKET_TICK_FACTOR = 0.3;
 export const ORNAMENT_Y_FACTOR = 1.6;
 /** Font size multiplier for ornament text (relative to noteHeight) */
 export const ORNAMENT_FONT_SIZE_MULTIPLIER = 0.7;
+
+/** Base vertical offset for first articulation mark above note (relative to noteHeight) */
+export const ARTICULATION_BASE_Y_FACTOR = 2.2;
+/** Vertical step between stacked articulation marks (relative to noteHeight) */
+export const ARTICULATION_STEP_Y_FACTOR = 0.6;
