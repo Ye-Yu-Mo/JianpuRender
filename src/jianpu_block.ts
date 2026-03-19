@@ -78,6 +78,9 @@ export function splitJianpuNote(jianpuNote: JianpuNote, quarters: number): Jianp
       accidental: 0, // Accidental only applies to the first part
       tiedFrom: jianpuNote, // The new note is tied *from* the modified original
       // Rendering properties will be recalculated later
+      // tuplet structure info is preserved so the renderer knows group membership;
+      // ornament/articulations/isGrace are NOT copied — they belong to the note's onset only
+      ...(jianpuNote.tuplet !== undefined && { tuplet: jianpuNote.tuplet }),
   };
 
   if (jianpuNote.tiedTo) { // Relink ties if any in pre-splitted note

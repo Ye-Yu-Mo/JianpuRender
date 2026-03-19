@@ -15,6 +15,29 @@
  * =============================================================================
  */
 
+/** Articulation types supported in Jianpu notation */
+export type ArticulationType =
+  | 'staccato'
+  | 'staccatissimo'
+  | 'accent'
+  | 'strong-accent'
+  | 'tenuto';
+
+/** Ornament types supported in Jianpu notation */
+export type OrnamentType = 'trill' | 'mordent' | 'turn';
+
+/** Tuplet position within a tuplet group */
+export type TupletType = 'start' | 'stop' | 'middle';
+
+/** Tuplet grouping info attached to a note */
+export interface TupletInfo {
+  type: TupletType;
+  /** Number of notes in the tuplet group (e.g. 3 for triplet) */
+  actual: number;
+  /** Normal note count the group replaces (e.g. 2 for triplet) */
+  normal: number;
+}
+
 /** Stores minimal information related to a musical note */
 export interface NoteInfo {
   /** Starting time, in quarter note quantities (float) */
@@ -25,6 +48,14 @@ export interface NoteInfo {
   pitch: number;
   /** Note intensity according to MIDI velocity */
   intensity: number;
+  /** True if this is a grace note (does not consume beat time) */
+  isGrace?: boolean;
+  /** Ornament to render above the note */
+  ornament?: OrnamentType;
+  /** Articulation marks to render on the note */
+  articulations?: ArticulationType[];
+  /** Tuplet grouping info (present on all notes within a tuplet group) */
+  tuplet?: TupletInfo;
 }
 
 /** Stores information related to a tempo change on a score (not used yet) */
