@@ -18,7 +18,8 @@
 import {
   LINE_STROKE_WIDTH, COMPACT_SPACING_FACTOR, UNDERLINE_SPACING_FACTOR,
   OCTAVE_DOT_OFFSET_FACTOR, DOT_SIZE_FACTOR, AUGMENTATION_DASH_FACTOR,
-  FONT_SIZE_MULTIPLIER, SMALL_FONT_SIZE_MULTIPLIER, DURATION_LINE_SCALES
+  FONT_SIZE_MULTIPLIER, SMALL_FONT_SIZE_MULTIPLIER, DURATION_LINE_SCALES,
+  TUPLET_BRACKET_Y_FACTOR, TUPLET_BRACKET_TICK_FACTOR
 } from './render_constants';
 
 import {
@@ -94,6 +95,9 @@ interface LinkedSVGDetails {
 
 /** Map to link logical notes to their rendered SVG elements for ties. */
 type LinkedNoteMap = Map<JianpuNote, LinkedSVGDetails>;
+
+/** Tracks the start x position of a tuplet bracket across blocks. Key = actual (e.g. 3 for triplet) */
+type TupletBracketMap = Map<number, { startX: number; g: SVGGElement }>;
 
 /**
  * Renders `JianpuInfo` data as numbered musical notation (Jianpu) in an SVG element.
@@ -363,6 +367,7 @@ export class JianpuSVGRender {
         let minHeight = 0; // Max extent above baseline (negative y)
 
         const linkedNoteMap: LinkedNoteMap = new Map(); // For ties across blocks
+        const tupletBracketMap: TupletBracketMap = new Map(); // For tuplet brackets across blocks
 
         this.jianpuModel.jianpuBlockMap.forEach((block, startTimeQ) => {
             // Check if block start time is >= last rendered quarter note time
@@ -376,7 +381,7 @@ export class JianpuSVGRender {
                      currentX = this.jianpuModel.measuresInfo.quartersToTime(startTimeQ, startTimeQ) * this.config.pixelsPerTimeStep;
                  }
 
-                const blockWidth = this.drawJianpuBlock(block, currentX, linkedNoteMap);
+                const blockWidth = this.drawJianpuBlock(block, currentX, linkedNoteMap, tupletBracketMap);
 
                 if (isCompact) {
                      contentWidth += blockWidth; // Accumulate width in compact mode
@@ -425,7 +430,8 @@ export class JianpuSVGRender {
    private drawJianpuBlock(
        block: JianpuBlock,
        x: number,
-       linkedNoteMap: LinkedNoteMap
+       linkedNoteMap: LinkedNoteMap,
+       tupletBracketMap: TupletBracketMap
    ): number {
     
        let blockWidth = 0;
@@ -520,7 +526,40 @@ export class JianpuSVGRender {
             }
         }
 
-       return blockWidth; // Return the width *occupied* by this block's drawing operations
+        // --- 5. Tuplet bracket ---
+        if (block.tupletInfo) {
+            const { type, actual } = block.tupletInfo;
+            const bracketY = -(this.config.noteHeight * TUPLET_BRACKET_Y_FACTOR);
+            const tickH = this.config.noteHeight * TUPLET_BRACKET_TICK_FACTOR;
+            const fontSize = `${this.config.noteHeight * SMALL_FONT_SIZE_MULTIPLIER}px`;
+            const blockCenterX = x + contentWidth / 2;
+            const blockRightX = x + contentWidth;
+
+            if (type === 'start') {
+                // Record start position; bracket will be drawn when 'stop' is encountered
+                tupletBracketMap.set(actual, { startX: blockCenterX, g: this.musicG });
+            } else if (type === 'stop') {
+                const entry = tupletBracketMap.get(actual);
+                if (entry) {
+                    const startX = entry.startX;
+                    const endX = blockCenterX;
+                    const midX = (startX + endX) / 2;
+                    // Horizontal line
+                    drawSVGPath(this.musicG, `M ${startX},${bracketY} H ${endX}`, 0, 0, 1, 1);
+                    // Left tick
+                    drawSVGPath(this.musicG, `M ${startX},${bracketY} V ${bracketY + tickH}`, 0, 0, 1, 1);
+                    // Right tick
+                    drawSVGPath(this.musicG, `M ${endX},${bracketY} V ${bracketY + tickH}`, 0, 0, 1, 1);
+                    // Number
+                    drawSVGText(this.musicG, `${actual}`, midX, bracketY - this.config.noteHeight * 0.2,
+                        fontSize, 'normal', 'middle', 'auto', this.config.noteColor);
+                    tupletBracketMap.delete(actual);
+                }
+            }
+            // 'middle': no action needed
+        }
+
+       return blockWidth;
    }
 
  /**

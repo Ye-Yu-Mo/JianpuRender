@@ -48,7 +48,12 @@ export const SMALL_FONT_SIZE_MULTIPLIER = 0.75;
 
 export const DURATION_LINE_SCALES = new Map<number, number>([
     [1, 1.78],
-    [2, 1.6], 
+    [2, 1.6],
     [3, 1.3],
     [4, 1.15]
 ]);
+
+/** Vertical distance of tuplet bracket above baseline (relative to noteHeight) */
+export const TUPLET_BRACKET_Y_FACTOR = 1.8;
+/** Height of the bracket's end ticks (relative to noteHeight) */
+export const TUPLET_BRACKET_TICK_FACTOR = 0.3;

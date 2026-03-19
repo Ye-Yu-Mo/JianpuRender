@@ -115,7 +115,9 @@ export class JianpuBlock {
    /** Number of augmentation dots */
    augmentationDots?: number;
    /** True if an augmentation dash is needed (for notes longer than quarter) */
-   augmentationDash?: boolean; // Simple flag for now
+   augmentationDash?: boolean;
+   /** Tuplet bracket info derived from notes' tuplet field */
+   tupletInfo?: { type: 'start' | 'stop' | 'middle', actual: number };
 
 
   // --- Rhythmic Properties (calculated during processing) ---
@@ -385,6 +387,7 @@ export class JianpuBlock {
         delete this.durationLines;
         delete this.augmentationDots;
         delete this.augmentationDash;
+        delete this.tupletInfo;
     
         const blockLength = this.length;
         if (isSafeZero(blockLength) || blockLength < 0) return;
@@ -471,6 +474,11 @@ export class JianpuBlock {
             }
         }
 
+        // --- Tuplet info: derive from first note's tuplet field ---
+        if (this.notes.length > 0 && this.notes[0].tuplet) {
+            const t = this.notes[0].tuplet;
+            this.tupletInfo = { type: t.type, actual: t.actual };
+        }
 
     }
 
